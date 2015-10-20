@@ -11,119 +11,140 @@ import cv2
 from cv_bridge import CvBridge
 import helper_functions as hp
 
-speed_factor = .6
+speed_factor = .3
+rotate_speed_limit = 0.3
 personal_space = .5
 
 class Controller:
-    def __init__(self):
-        rospy.init_node('caribou')
+  def __init__(self):
+    rospy.init_node('caribou')
 
-        self.pub = rospy.Publisher('cmd_vel', Twist, queue_size=10)
-        self.command = Twist()
+    self.pub = rospy.Publisher('cmd_vel', Twist, queue_size=10)
+    self.command = Twist()
 
-        self.threshold = 5 # TODO: CHANGE THIS NUMBER
-        self.bridge = CvBridge()
+    self.threshold = 0 # TODO: CHANGE THIS NUMBER
+    self.bridge = CvBridge()
 
-        rospy.Subscriber('/camera/image_raw', Image, self.process_image)
+    rospy.Subscriber('/camera/image_raw', Image, self.process_image)
 
-        cv2.setMouseCallback('video_window', self.process_mouse_event)
-        cv2.namedWindow('threshold_image')
-        cv2.namedWindow('video_window')
-        cv2.namedWindow('bw_window')
+    cv2.setMouseCallback('video_window', self.process_mouse_event)
+    cv2.namedWindow('threshold_image')
+    cv2.namedWindow('video_window')
+    cv2.namedWindow('bw_window')
 
-        self.grey_lower_bound = 128
-        cv2.createTrackbar('grey lower bound', 'threshold_image', 0, 255, self.set_grey_lower_bound)
- 
-        self.grey_upper_bound = 255
-        cv2.createTrackbar('grey upper bound', 'threshold_image', 0, 255, self.set_grey_upper_bound)
+    self.grey_lower_bound = 128
+    cv2.createTrackbar('grey lower bound', 'threshold_image', 0, 255,
+        self.set_grey_lower_bound)
 
-        self.stop()
-        self.drive()
+    self.grey_upper_bound = 255
+    cv2.createTrackbar('grey upper bound', 'threshold_image', 0, 255,
+        self.set_grey_upper_bound)
 
-
-    def process_mouse_event(self, event, x,y,flags,param):
-        """ Process mouse events so that you can see the color values associated
-            with a particular pixel in the camera images """
-        image_info_window = 255*np.ones((500,500,3))
-        cv2.putText(image_info_window,
-                    'Color (b=%d,g=%d,r=%d)' % (self.cv_image[ty,x,0], self.cv_image[y,x,1], self.cv_image[y,x,2]),
-                    (5,50),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    1,
-                    (0,0,0))
-        cv2.imshow('image_info', image_info_window)
-        cv2.waitKey(5)
-
-    def set_grey_lower_bound(self, val):
-        self.grey_lower_bound = val
-
-    def set_grey_upper_bound(self, val):
-        self.grey_upper_bound = val
-
-    def process_image(self, msg):
-        """ Process image messages from ROS and stash them in an attribute called cv_image for subsequent processing """
-        self.cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding="bgr8")
-        # print self.cv_image.shape
-        cv2.imshow('video_window', self.cv_image)
-        cv2.waitKey(5)
-
-        threshold = self.threshold
-
-        direction = hp.find_line(self.cv_image, (0,480*0.75), (640,480), (self.grey_lower_bound,self.grey_lower_bound,self.grey_lower_bound), (self.grey_upper_bound,self.grey_upper_bound,self.grey_upper_bound), threshold) #TODO: move these hard-coded values up into controller
+    self.stop()
+    self.send()
 
 
-    def find_line(self, binary_image):
-        """ Given the bw image, track the line and move the bot appropriately. """
+  def process_mouse_event(self, event, x,y,flags,param):
+    """ Process mouse events so that you can see the color values associated
+        with a particular pixel in the camera images """
+    image_info_window = 255*np.ones((500,500,3))
+    cv2.putText(image_info_window,
+        ('Color (b=%d,g=%d,r=%d)' %
+        (self.cv_image[ty,x,0],
+         self.cv_image[y,x,1],
+         self.cv_image[y,x,2])),
+        (5,50),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        1,
+        (0,0,0))
+    cv2.imshow('image_info', image_info_window)
+    cv2.waitKey(5)
 
+  def set_grey_lower_bound(self, val):
+    self.grey_lower_bound = val
 
-    def stop(self):
-        ''' stop all bot motion '''
-        self.command.linear.x = 0
-        self.pub.publish(self.command)
+  def set_grey_upper_bound(self, val):
+    self.grey_upper_bound = val
 
-    def drive(self):
-        self.pub.publish(self.command)
+  def process_image(self, msg):
+    """
+    Process image messages from ROS and stash them in an attribute called
+    cv_image for subsequent processing
+    """
+    self.cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding="bgr8")
+    # print self.cv_image.shape
+    cv2.imshow('video_window', self.cv_image)
+    cv2.waitKey(5)
+
+    threshold = self.threshold
+
+    direction = hp.find_line(self.cv_image, (0,480*0.90), (640,480),
+        (self.grey_lower_bound,self.grey_lower_bound,self.grey_lower_bound),
+        (self.grey_upper_bound,self.grey_upper_bound,self.grey_upper_bound),
+        threshold) #TODO: move these hard-coded values up into controller
+    self.react(direction)
+    
+  def react(self, direction):
+    if direction[1]:
+      if direction[0] == 0:
+        self.command.angular.z = 0
+        self.command.linear.x = .1
+      else:
+        proportion = (float(direction[0]) / (640/2))
+        self.command.angular.z = (min(proportion, rotate_speed_limit)
+            if proportion > 0 else max(proportion, -rotate_speed_limit))
+        self.command.linear.x = .1 * (1 - abs(proportion))
+    else:
+      self.stop()
+    print((self.command.linear.x, self.command.angular.z))
+
+  def find_line(self, binary_image):
+    """ Given the bw image, track the line and move the bot appropriately. """
+    pass
+
+  def stop(self):
+    ''' stop all bot motion '''
+    self.command.linear.x = 0
+    self.command.angular.z = 0
+
+  def send(self):
+    self.pub.publish(self.command)
 
 def tr_to_xy(pair):
-    ''' convert a theta, radius pair to an x, y pair '''
-    angle, radius = pair[0], pair[1]
-    x = radius * math.cos(math.radians(angle))
-    y = radius * math.sin(math.radians(angle))
-    return [x,y]
+  ''' convert a theta, radius pair to an x, y pair '''
+  angle, radius = pair[0], pair[1]
+  x = radius * math.cos(math.radians(angle))
+  y = radius * math.sin(math.radians(angle))
+  return [x,y]
 
 def xy_to_tr(pair):
-    ''' convert an x, y pair to a theta, radius pair '''
-    x, y = pair[0], pair[1]
-    theta = math.degrees(math.atan((y / x)))
-    radius = math.sqrt(x ** 2 + y ** 2)
-    return [theta, radius]
+  ''' convert an x, y pair to a theta, radius pair '''
+  x, y = pair[0], pair[1]
+  theta = math.degrees(math.atan((y / x)))
+  radius = math.sqrt(x ** 2 + y ** 2)
+  return [theta, radius]
 
 def distance(pt1, pt2):
-    pt1 = np.array((pt1[0], pt1[1]))
-    pt2 = np.array((pt2[0], pt2[1]))
-    return np.linalg.norm(pt1-pt2)
+  pt1 = np.array((pt1[0], pt1[1]))
+  pt2 = np.array((pt2[0], pt2[1]))
+  return np.linalg.norm(pt1-pt2)
 
 def average_two_points(pt1, pt2):
-    return [((pt1[0] + pt2[0]) / 2), ((pt1[1] + pt2[1]) / 2)]
+  return [((pt1[0] + pt2[0]) / 2), ((pt1[1] + pt2[1]) / 2)]
 
 def find_two_closest(point_list):
-    closest_indices = []
-    smallest_distance = 100
-    for i in range(len(point_list)):
-        for j in range(len(point_list)):
-            dist = distance(point_list[i], point_list[j])
-            if dist < smallest_distance:
-                closest_indices = [i, j]
-                smallest_distance = dist
-    return [point_list[closest_indices[0]],point_list[closest_indices[1]]]
-
-
-
-
-
+  closest_indices = []
+  smallest_distance = 100
+  for i in range(len(point_list)):
+    for j in range(len(point_list)):
+      dist = distance(point_list[i], point_list[j])
+      if dist < smallest_distance:
+        closest_indices = [i, j]
+        smallest_distance = dist
+  return [point_list[closest_indices[0]],point_list[closest_indices[1]]]
 
 controller = Controller()
 
 while not rospy.is_shutdown():
-    # controller.update_command()
-    controller.drive()
+  # controller.update_command()
+  controller.send()
