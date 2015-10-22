@@ -1,0 +1,18 @@
+Git Style
+1.       The master branch is only for consistently working, polished complete code.
+2.       We will be mostly building off the dev branch which contains decent code which generally works and can be build off of.
+3.       Our individual work will be built on feature branches off of the dev branch.
+4.       Always build on feature branches.
+5.       Feature branches begin with an underscore and words are separated by underscores like _line_follow.
+6.       Submit a pull request when merging a branch and let another member of the team OK it.
+
+Code Style
+1.       Tabs in our project are 2 spaces – not 4 spaces, not tabs, 2 spaces
+2.       Code should be a maximum of 80 columns wide.
+3.       Wrapped code should be indented by 4 spaces. For example, see here.
+4.       Function and variable names should be snake case (lowercase words separated with underscores)
+5.       In lists and other comma separated data structures, there should always be a space after (and not before) the next item. For example: [1, 2, 3] is good, [1,2,3] is not.
+
+ 
+Comment Style
+1.       Every function should have a doc string written such that there are 3 double quotes on one line, the comment on the next line(s), and 3 double quotes on another new line. See here for example.
