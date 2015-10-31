@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 
-""" Have bot follow a walking person like a pet. """
+"""
+Neato control program to make a robot follow a line (like a roadway) and react 
+to signs in its path.
+"""
 
 import rospy
 from geometry_msgs.msg import Twist, PoseWithCovariance, Pose, Point, Vector3
@@ -172,6 +175,7 @@ class Controller:
 
 
   def react(self, direction):
+    """ Changes self.command in response to the direction inputed """
     if direction[1]:
       if direction[0] == 0:
         self.command.angular.z = 0
@@ -185,53 +189,16 @@ class Controller:
       self.stop()
     print 'direction: ' , ((self.command.linear.x, self.command.angular.z))
 
-  def find_line(self, binary_image):
-    """ Given the bw image, track the line and move the bot appropriately. """
-    pass
-
   def stop(self):
-    ''' stop all bot motion '''
+    """ Sets self.command to stop all bot motion """
     self.command.linear.x = 0
     self.command.angular.z = 0
 
   def send(self):
+    """ Publishes self.command to ROS """
     self.pub.publish(self.command)
-
-def tr_to_xy(pair):
-  ''' convert a theta, radius pair to an x, y pair '''
-  angle, radius = pair[0], pair[1]
-  x = radius * math.cos(math.radians(angle))
-  y = radius * math.sin(math.radians(angle))
-  return [x,y]
-
-def xy_to_tr(pair):
-  ''' convert an x, y pair to a theta, radius pair '''
-  x, y = pair[0], pair[1]
-  theta = math.degrees(math.atan((y / x)))
-  radius = math.sqrt(x ** 2 + y ** 2)
-  return [theta, radius]
-
-def distance(pt1, pt2):
-  pt1 = np.array((pt1[0], pt1[1]))
-  pt2 = np.array((pt2[0], pt2[1]))
-  return np.linalg.norm(pt1-pt2)
-
-def average_two_points(pt1, pt2):
-  return [((pt1[0] + pt2[0]) / 2), ((pt1[1] + pt2[1]) / 2)]
-
-def find_two_closest(point_list):
-  closest_indices = []
-  smallest_distance = 100
-  for i in range(len(point_list)):
-    for j in range(len(point_list)):
-      dist = distance(point_list[i], point_list[j])
-      if dist < smallest_distance:
-        closest_indices = [i, j]
-        smallest_distance = dist
-  return [point_list[closest_indices[0]],point_list[closest_indices[1]]]
 
 controller = Controller()
 
 while not rospy.is_shutdown():
-  # controller.update_command()
   controller.send()
