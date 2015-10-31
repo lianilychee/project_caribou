@@ -112,7 +112,7 @@ class Controller:
     self.b_l = val
 
   def set_b_u(self, val):
-    """ Use sliders to set BLUE lower bound. """
+    """ Use sliders to set BLUE upper bound. """
     self.b_u = val
 
   def set_g_l(self, val):
@@ -120,7 +120,7 @@ class Controller:
     self.g_l = val
 
   def set_g_u(self, val):
-    """ Use sliders to set GREEN lower bound. """
+    """ Use sliders to set GREEN upper bound. """
     self.g_u = val
 
   def set_r_l(self, val):
@@ -128,7 +128,7 @@ class Controller:
     self.r_l = val
 
   def set_r_u(self, val):
-    """ Use sliders to set RED lower bound. """
+    """ Use sliders to set RED upper bound. """
     self.r_u = val
 
 
