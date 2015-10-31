@@ -9,8 +9,12 @@ def find_line(image, top_left, bottom_right, lower_bound, upper_bound, threshold
   Given the bw image, define the bounding box, find the line, and output the appropriate heading. 
   Coordinates in (row,col) aka (x,y)
   """
-  binary_image = cv2.inRange(image[top_left[1]:bottom_right[1], top_left[0]:bottom_right[0]], lower_bound, upper_bound)
-  # cv2.imshow('bw_window', binary_image) #TODO: UNCOMMENT
+
+  binary_image = cv2.inRange(image, lower_bound, upper_bound)
+  cv2.imshow('bw_window', binary_image)
+
+  binary_image_cropped = cv2.inRange(image[top_left[1]:bottom_right[1], top_left[0]:bottom_right[0]], lower_bound, upper_bound)
+  cv2.imshow('bw_window_cropped', binary_image_cropped) #TODO: UNCOMMENT
 
   centerline = (bottom_right[0] - top_left[0]) / 2
 
