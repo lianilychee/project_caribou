@@ -3,6 +3,11 @@
 import math
 import numpy as np
 import cv2
+import pytesseract
+try:
+  import Image
+except ImportError:
+  from PIL import Image
 
 def find_line(image, top_left, bottom_right, lower_bound, upper_bound, threshold):
   """
@@ -34,3 +39,13 @@ def find_line(image, top_left, bottom_right, lower_bound, upper_bound, threshold
   else:
     return (0, True) # line could be nonexistent or centered
 
+
+def extract_text(array):
+  array = cv2.cvtColor(array, cv2.COLOR_GRAY2RGB)
+  mode = 'RGBA'
+  size = 640, 480
+  array = array.reshape(array.shape[0]*array.shape[1], array.shape[2])
+  if len(array[0]) == 3:
+    array = np.c_[array, 255*np.ones((len(array),1), np.uint8)]
+  img = Image.frombuffer(mode, size, array.tostring(), 'raw', mode, 0, 1)
+  return(pytesseract.image_to_string(img))
