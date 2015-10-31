@@ -100,27 +100,35 @@ class Controller:
     cv2.waitKey(5)
 
   def set_grey_lower(self, val):
+    """ Use sliders to set GREY lower bound. """
     self.grey_lower = val
 
   def set_grey_upper(self, val):
+    """ Use sliders to set GREY upper bound. """
     self.grey_upper = val
 
   def set_b_l(self, val):
+    """ Use sliders to set BLUE lower bound. """
     self.b_l = val
 
   def set_b_u(self, val):
+    """ Use sliders to set BLUE lower bound. """
     self.b_u = val
 
   def set_g_l(self, val):
+    """ Use sliders to set BLUE lower bound. """
     self.g_l = val
 
   def set_g_u(self, val):
+    """ Use sliders to set GREEN lower bound. """
     self.g_u = val
 
   def set_r_l(self, val):
+    """ Use sliders to set RED lower bound. """
     self.r_l = val
 
   def set_r_u(self, val):
+    """ Use sliders to set RED lower bound. """
     self.r_u = val
 
 
@@ -141,7 +149,11 @@ class Controller:
     threshold = self.threshold
 
     # to detect line
-    direction = hp.find_line(self.cv_image, (0, self.win_height_cropped), self.win_size,(self.grey_lower,self.grey_lower,self.grey_lower), (self.grey_upper,self.grey_upper,self.grey_upper), threshold) #TODO: move these hard-coded values up into controller
+    direction = hp.find_line(self.cv_image, 
+      (0, self.win_height_cropped), self.win_size,
+      (self.grey_lower,self.grey_lower,self.grey_lower), 
+      (self.grey_upper,self.grey_upper,self.grey_upper), 
+      threshold)
     self.react(direction)
 
 

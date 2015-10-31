@@ -10,7 +10,9 @@ def find_line(image, top_left, bottom_right, lower_bound, upper_bound, threshold
   Coordinates in (row,col) aka (x,y)
   """
 
-  binary_image_cropped = cv2.inRange(image[top_left[1]:bottom_right[1], top_left[0]:bottom_right[0]], lower_bound, upper_bound)
+  binary_image_cropped = cv2.inRange(
+    image[top_left[1]:bottom_right[1], top_left[0]:bottom_right[0]], 
+    lower_bound, upper_bound)
   cv2.imshow('bw_window_cropped', binary_image_cropped) #TODO: UNCOMMENT
 
   centerline = (bottom_right[0] - top_left[0]) / 2
@@ -34,15 +36,3 @@ def find_line(image, top_left, bottom_right, lower_bound, upper_bound, threshold
     return (-(avg_col - centerline), True) # turn left
   else:
     return (0, True) # line could be nonexistent or centered
-
-# def find_sign(image, lower_bound, upper_bound):
-def find_sign(image, lower_bound, upper_bound):
-
-  """
-  Given the raw image, define the bounding box, find the line, and output the appropriate heading. 
-  Coordinates in (row,col) aka (x,y)
-
-  This should return the sign's color
-  """
-
-  pass
