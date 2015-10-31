@@ -44,8 +44,4 @@ def find_sign(image, lower_bound, upper_bound):
   This should return the sign's color
   """
 
-  print 'find_sign'
-
-
-
-  return 'exiting find_sign method'
+  pass
