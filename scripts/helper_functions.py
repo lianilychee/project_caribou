@@ -11,21 +11,22 @@ from sensor_msgs.msg import Image
 from copy import deepcopy
 from cv_bridge import CvBridge
 from geometry_msgs.msg import Twist, Vector3
-import match_keypoints as mk
+# import match_keypoints as mk
 import rospkg
 
 
-
-def find_line(image, top_left, bottom_right, lower_bound, upper_bound, threshold):
+def find_line(image,top_left,bottom_right,lower_bound,upper_bound,threshold):
   """
-  Given the bw image, define the bounding box, find the line, and output the appropriate heading. 
+  Given the bw image, define the cropped image, find the line, and output the 
+  appropriate heading. 
   Coordinates in (row,col) aka (x,y)
   """
-
+  print(lower_bound)
+  print(upper_bound)
   binary_image_cropped = cv2.inRange(
     image[top_left[1]:bottom_right[1], top_left[0]:bottom_right[0]], 
     lower_bound, upper_bound)
-  cv2.imshow('bw_window_cropped', binary_image_cropped) #TODO: UNCOMMENT
+  cv2.imshow('bw_window_cropped', binary_image_cropped)
 
   centerline = (bottom_right[0] - top_left[0]) / 2
 
@@ -50,21 +51,27 @@ def find_line(image, top_left, bottom_right, lower_bound, upper_bound, threshold
     return (0, True) # line could be nonexistent or centered
 
 
-def find_boundary_pts():
+def find_stop_sign(image, lb, ub):
   """
-  Given the bw image, find the boundary points, and output the min/max points 
-  needed to draw a two-point rectangle.
+  Find the octagon by:
+  changing raw image colorspace from BGR to HSV,
+  filtering out red from HSV image,
+  changing filtered image to greyscale,
+  performing Gaussian blur and canny edge detection
   """
 
+  image = image
 
-  image = cv2.imread('../stop.png')
-  gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-  gray = cv2.GaussianBlur(gray, (3, 3), 0)
-  #cv2.imshow("Gray",gray)
-  #cv2.waitKey(0)
-  edged = cv2.Canny(gray,10,250)
+  hsv_image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+  bw_image = cv2.inRange(hsv_image, lb, ub) 
+
+  gray_image = bw_image
+  # gray_image = cv2.cvtColor(bw_image, cv2.COLOR_BGR2GRAY)
+
+  gray_image = cv2.GaussianBlur(gray_image, (3, 3), 0)
+  cv2.imshow("Gray",gray_image)
+  edged = cv2.Canny(gray_image,10,250)
   #cv2.imshow("Edged", edged)
-  #cv2.waitKey(0)
   kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (7, 7))
   closed = cv2.morphologyEx(edged, cv2.MORPH_CLOSE, kernel)
   #cv2.imshow("Closed",closed)
@@ -80,5 +87,8 @@ def find_boundary_pts():
       cv2.drawContours(image, [approx], -1, (0, 255, 0), 4)
       total +=1
 
-  cv2.imshow("Output", image)
-  cv2.waitKey(0)
+  # cv2.imshow("Output", image)
+  #cv2.waitKey(0)
+
+
+# find_stop_sign(cv2.imread('../test_images/live.png'), (0,188,42), (255,255,255))
