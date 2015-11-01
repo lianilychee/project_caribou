@@ -14,9 +14,9 @@ import cv2
 from cv_bridge import CvBridge
 import helper_functions as hp
 
-speed_factor = .3
 rotate_speed_limit = 0.3
-personal_space = .5
+DRIVE = 0
+STOP = 1
 
 
 class Controller:
@@ -33,13 +33,23 @@ class Controller:
     self.win_size = (640,480)
     self.win_height_cropped = 480*0.9
 
-    rospy.Subscriber('/camera/image_raw', Image, self.process_image)
+    ##### STATE VARIABLES #####
+    self.state = DRIVE
+    self.pause_duration = rospy.Duration(3)
+    self.ignore_stop_sign_threshold = self.pause_duration + rospy.Duration(3)
+    self.last_stop_sign = rospy.Time.now() - self.ignore_stop_sign_threshold
+
+    rospy.Subscriber('/camera/image_raw', Image, self.react_to_image)
 
     cv2.setMouseCallback('video_window', self.process_mouse_event)
     cv2.namedWindow('set_bounds')
     cv2.namedWindow('bw_window_cropped')
     cv2.namedWindow('Output')
 
+    ##### INITIALIZE SIFT #####
+    self.sift = cv2.xfeatures2d.SIFT_create()
+    self.bf = cv2.BFMatcher()
+    self.past_descriptors = []
    
     ##### SLIDERS #####
 
@@ -137,7 +147,7 @@ class Controller:
     self.r_u = val
 
 
-  def process_image(self, msg):
+  def react_to_image(self, msg):
     """
     Process image messages from ROS and stash them in an attribute called
     cv_image for subsequent processing
@@ -146,30 +156,43 @@ class Controller:
     line following and sign detection
     """
     self.cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding="bgr8")
-    # self.hsv_image = cv2.cvtColor(self.cv_image, cv2.COLOR_BGR2HSV)
-    # self.bw_image = cv2.inRange(self.hsv_image, self.red_lb, self.red_ub) 
+    if self.state == DRIVE:
+      direction = hp.find_line(self.cv_image, 
+        (0, self.win_height_cropped), self.win_size,
+        (self.grey_lower,self.grey_lower,self.grey_lower), 
+        (self.grey_upper,self.grey_upper,self.grey_upper), 
+        self.threshold)
+      self.drive(direction)
+      if hp.find_stop_sign(self.cv_image, self.red_lb, self.red_ub) and 
+          (rospy.Time.now() - self.ignore_stop_sign_threshold) > 0:
+        rospy.Timer(self.pause_duration,
+            self.look_both_ways, oneshot=true)
+        self.state = STOP
 
-    cv2.waitKey(5)
+    elif self.state == STOP:
+      self.stop()
 
-    threshold = self.threshold
-
-    # to detect line
-    direction = hp.find_line(self.cv_image, 
-      (0, self.win_height_cropped), self.win_size,
-      (self.grey_lower,self.grey_lower,self.grey_lower), 
-      (self.grey_upper,self.grey_upper,self.grey_upper), 
-      threshold) #UNCOMMENT
-    self.react(direction) #UNCOMMENT
-
-    hp.find_stop_sign(self.cv_image, self.red_lb, self.red_ub)
-
-    # show images
-    cv2.imshow('video_window', self.cv_image)
-    # cv2.imshow('HSV image', self.hsv_image)    
-    # cv2.imshow('BW image', self.bw_image)
+    elif self.state == LOOK_BOTH_WAYS:
+      gray = cv2.cvtColor(self.cv_image, cv2.COLOR_BGR2GRAY)
+      kp, des = self.sift.detectAndCompute(gray, None)
+      if len(self.past_descriptors) > 10:
+        previous_des = self.past_descriptors.pop(0)
+        matches = bf.knnMatch(des, previous_des, k=2)
+        # Apply ratio test
+        good_count = 0
+        for m,n in matches:
+          if m.distance < 0.75*n.distance:
+            good_count += 1
+        if good_count > 0.9*len(previous_des):
+          self.state = DRIVE
+      self.past_descriptors.append(des)
 
 
-  def react(self, direction):
+  def look_both_ways(self):
+    """ Callback function to set the robot's state to LOOK_BOTH_WAYS """
+    self.state = LOOK_BOTH_WAYS
+
+  def drive(self, direction):
     """ Changes self.command in response to the direction inputed """
     if direction[1]:
       if direction[0] == 0:
