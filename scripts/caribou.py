@@ -17,6 +17,7 @@ import helper_functions as hp
 rotate_speed_limit = 0.3
 DRIVE = 0
 STOP = 1
+LOOK_BOTH_WAYS = 2
 
 
 class Controller:
@@ -33,6 +34,10 @@ class Controller:
     self.win_size = (640,480)
     self.win_height_cropped = 480*0.9
 
+    ##### INITIAL COLOR THRESHOLDS #####
+    self.grey_lower = 0
+    self.grey_upper = 255
+
     ##### STATE VARIABLES #####
     self.state = DRIVE
     self.pause_duration = rospy.Duration(3)
@@ -47,17 +52,15 @@ class Controller:
     cv2.namedWindow('Output')
 
     ##### INITIALIZE SIFT #####
-    self.sift = cv2.xfeatures2d.SIFT_create()
+    self.sift = cv2.SIFT()
     self.bf = cv2.BFMatcher()
     self.past_descriptors = []
    
     ##### SLIDERS #####
 
-    self.grey_lower = 0
     cv2.createTrackbar('grey l', 'set_bounds', 0, 255,
         self.set_grey_lower)
 
-    self.grey_upper = 255
     cv2.createTrackbar('grey u', 'set_bounds', 0, 255,
         self.set_grey_upper)
 
@@ -87,11 +90,11 @@ class Controller:
 
     ##### COLOR PARAMETERS (hand-tweaked) #####
 
-    self.red_lb = (0,188,42)
-    self.red_ub = (255,255,255)
+    self.red_lb = (70,70,250)
+    self.red_ub = (90,90,255)
 
-    self.grey_lb = 130
-    self.grey_ub = 255
+    self.grey_lb = (230, 230, 230)
+    self.grey_ub = (255, 255, 255)
 
     self.stop()
     self.send()
@@ -156,39 +159,48 @@ class Controller:
     line following and sign detection
     """
     self.cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding="bgr8")
+
+    cv2.waitKey(5)
     if self.state == DRIVE:
+      print 'react'
       direction = hp.find_line(self.cv_image, 
         (0, self.win_height_cropped), self.win_size,
-        (self.grey_lower,self.grey_lower,self.grey_lower), 
-        (self.grey_upper,self.grey_upper,self.grey_upper), 
+        self.grey_lb, #(self.grey_lower, self.grey_lower, self.grey_lower), 
+        self.grey_ub, #(self.grey_upper, self.grey_upper, self.grey_upper), 
         self.threshold)
       self.drive(direction)
-      if hp.find_stop_sign(self.cv_image, self.red_lb, self.red_ub) and 
-          (rospy.Time.now() - self.ignore_stop_sign_threshold) > 0:
+      sign_test = hp.find_stop_sign(self.cv_image, self.red_lb, self.red_ub) #(self.b_l,self.g_l,self.r_l), (self.b_u,self.g_u,self.r_u))
+      print sign_test
+      if (sign_test and 
+          (rospy.Time.now() + self.ignore_stop_sign_threshold) > 
+          self.last_stop_sign):
         rospy.Timer(self.pause_duration,
-            self.look_both_ways, oneshot=true)
+            self.look_both_ways, oneshot=True)
         self.state = STOP
 
     elif self.state == STOP:
+      print 'stop'
       self.stop()
 
     elif self.state == LOOK_BOTH_WAYS:
+      print 'look'
       gray = cv2.cvtColor(self.cv_image, cv2.COLOR_BGR2GRAY)
       kp, des = self.sift.detectAndCompute(gray, None)
       if len(self.past_descriptors) > 10:
         previous_des = self.past_descriptors.pop(0)
-        matches = bf.knnMatch(des, previous_des, k=2)
+        matches = self.bf.knnMatch(des, previous_des, k=2)
         # Apply ratio test
         good_count = 0
         for m,n in matches:
           if m.distance < 0.75*n.distance:
             good_count += 1
+        print(str(good_count) + "/" + str(len(previous_des)))
         if good_count > 0.9*len(previous_des):
           self.state = DRIVE
       self.past_descriptors.append(des)
 
 
-  def look_both_ways(self):
+  def look_both_ways(self, event):
     """ Callback function to set the robot's state to LOOK_BOTH_WAYS """
     self.state = LOOK_BOTH_WAYS
 
