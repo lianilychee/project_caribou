@@ -149,25 +149,23 @@ class Controller:
     threshold = self.threshold
 
     # to detect line
-    direction = hp.find_line(self.cv_image, 
-      (0, self.win_height_cropped), self.win_size,
-      (self.grey_lower,self.grey_lower,self.grey_lower), 
-      (self.grey_upper,self.grey_upper,self.grey_upper), 
-      threshold)
-    self.react(direction)
+    # direction = hp.find_line(self.cv_image, 
+    #   (0, self.win_height_cropped), self.win_size,
+    #   (self.grey_lower,self.grey_lower,self.grey_lower), 
+    #   (self.grey_upper,self.grey_upper,self.grey_upper), 
+    #   threshold) #UNCOMMENT
+    # self.react(direction) #UNCOMMENT
 
-
-    pt1 = (100,100)
-    pt2 = (300,300)
+    hp.find_boundary_pts(self.bw_image)
 
 
     # draw bounding box
-    cv2.rectangle(self.cv_image, pt1, pt2, color=(255,0,0), thickness=5)
-    cv2.rectangle(self.hsv_image, pt1, pt2, color=(255,0,0), thickness=5)
+    # cv2.rectangle(self.cv_image, pt1, pt2, color=(255,0,0), thickness=5)
+    # cv2.rectangle(self.hsv_image, pt1, pt2, color=(255,0,0), thickness=5)
 
     # show images
-    cv2.imshow('video_window', self.cv_image)
-    cv2.imshow('HSV image', self.hsv_image)    
+    # cv2.imshow('video_window', self.cv_image)
+    # cv2.imshow('HSV image', self.hsv_image)    
     cv2.imshow('BW image', self.bw_image)
 
 
@@ -183,7 +181,7 @@ class Controller:
         self.command.linear.x = .1 * (1 - abs(proportion))
     else:
       self.stop()
-    print 'direction: ' , ((self.command.linear.x, self.command.angular.z))
+    # print 'direction: ' , ((self.command.linear.x, self.command.angular.z)) #UNCOMMENT
 
   def find_line(self, binary_image):
     """ Given the bw image, track the line and move the bot appropriately. """
