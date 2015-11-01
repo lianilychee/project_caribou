@@ -13,12 +13,13 @@ import numpy as np
 import cv2
 from cv_bridge import CvBridge
 import helper_functions as hp
+import signal
+import sys
 
 rotate_speed_limit = 0.3
 DRIVE = 0
 STOP = 1
 LOOK_BOTH_WAYS = 2
-
 
 class Controller:
   def __init__(self):
@@ -33,10 +34,6 @@ class Controller:
     ##### WINDOW SIZE #####
     self.win_size = (640,480)
     self.win_height_cropped = 480*0.9
-
-    ##### INITIAL COLOR THRESHOLDS #####
-    self.grey_lower = 0
-    self.grey_upper = 255
 
     ##### STATE VARIABLES #####
     self.state = DRIVE
@@ -55,47 +52,50 @@ class Controller:
     self.sift = cv2.SIFT()
     self.bf = cv2.BFMatcher()
     self.past_descriptors = []
+
+    ##### COLOR PARAMETERS (hand-tweaked) #####
+    print('a')
+    settings_file = open('settings.txt', 'r')
+    self.grey_lb = int(settings_file.readline())
+    self.grey_ub = int(settings_file.readline())
+    self.red_lb = eval(settings_file.readline())
+    self.red_ub = eval(settings_file.readline())
+    settings_file.close()
+    print(self.red_lb[0])
    
     ##### SLIDERS #####
 
-    cv2.createTrackbar('grey l', 'set_bounds', 0, 255,
+    cv2.createTrackbar('grey l', 'set_bounds', self.grey_lb , 255,
         self.set_grey_lower)
 
-    cv2.createTrackbar('grey u', 'set_bounds', 0, 255,
+    cv2.createTrackbar('grey u', 'set_bounds', self.grey_ub , 255,
         self.set_grey_upper)
 
     self.b_l = 128
-    cv2.createTrackbar('B l', 'set_bounds', 0,255, 
+    cv2.createTrackbar('B l', 'set_bounds', self.red_lb[0], 255, 
       self.set_b_l)
 
     self.b_u = 255
-    cv2.createTrackbar('B u', 'set_bounds', 0,255, 
+    cv2.createTrackbar('B u', 'set_bounds', self.red_ub[0], 255, 
       self.set_b_u)
 
     self.g_l = 128
-    cv2.createTrackbar('G l', 'set_bounds', 0,255, 
+    cv2.createTrackbar('G l', 'set_bounds', self.red_lb[1] ,255, 
       self.set_g_l)
 
     self.g_u = 255
-    cv2.createTrackbar('G u', 'set_bounds', 0, 255,
+    cv2.createTrackbar('G u', 'set_bounds', self.red_ub[1], 255,
         self.set_g_u)
 
     self.r_l = 128
-    cv2.createTrackbar('R l', 'set_bounds', 0, 255,
+    cv2.createTrackbar('R l', 'set_bounds', self.red_lb[2], 255,
         self.set_r_l)
 
     self.r_u = 255
-    cv2.createTrackbar('R u', 'set_bounds', 0, 255,
+    cv2.createTrackbar('R u', 'set_bounds', self.red_ub[2], 255,
         self.set_r_u)
 
-    ##### COLOR PARAMETERS (hand-tweaked) #####
-
-    self.red_lb = (70,70,250)
-    self.red_ub = (90,90,255)
-
-    self.grey_lb = (230, 230, 230)
-    self.grey_ub = (255, 255, 255)
-
+    print('c')
     self.stop()
     self.send()
 
@@ -119,35 +119,35 @@ class Controller:
 
   def set_grey_lower(self, val):
     """ Use sliders to set GREY lower bound. """
-    self.grey_lower = val
+    self.grey_lb = val
 
   def set_grey_upper(self, val):
     """ Use sliders to set GREY upper bound. """
-    self.grey_upper = val
+    self.grey_ub = val
 
   def set_b_l(self, val):
     """ Use sliders to set BLUE lower bound. """
-    self.b_l = val
+    self.red_lb[0] = val
 
   def set_b_u(self, val):
     """ Use sliders to set BLUE upper bound. """
-    self.b_u = val
+    self.red_ub[0] = val
 
   def set_g_l(self, val):
     """ Use sliders to set BLUE lower bound. """
-    self.g_l = val
+    self.red_lb[1] = val
 
   def set_g_u(self, val):
     """ Use sliders to set GREEN upper bound. """
-    self.g_u = val
+    self.red_ub[1] = val
 
   def set_r_l(self, val):
     """ Use sliders to set RED lower bound. """
-    self.r_l = val
+    self.red_lb[2] = val
 
   def set_r_u(self, val):
     """ Use sliders to set RED upper bound. """
-    self.r_u = val
+    self.red_ub[2] = val
 
 
   def react_to_image(self, msg):
@@ -165,11 +165,11 @@ class Controller:
       print 'react'
       direction = hp.find_line(self.cv_image, 
         (0, self.win_height_cropped), self.win_size,
-        self.grey_lb, #(self.grey_lower, self.grey_lower, self.grey_lower), 
-        self.grey_ub, #(self.grey_upper, self.grey_upper, self.grey_upper), 
+        (self.grey_lb, self.grey_lb, self.grey_lb), 
+        (self.grey_ub, self.grey_ub, self.grey_ub), 
         self.threshold)
       self.drive(direction)
-      sign_test = hp.find_stop_sign(self.cv_image, self.red_lb, self.red_ub) #(self.b_l,self.g_l,self.r_l), (self.b_u,self.g_u,self.r_u))
+      sign_test = hp.find_stop_sign(self.cv_image, tuple(self.red_lb), tuple(self.red_ub)) #(self.b_l,self.g_l,self.r_l), (self.b_u,self.g_u,self.r_u))
       print sign_test
       if (sign_test and 
           (rospy.Time.now() + self.ignore_stop_sign_threshold) > 
@@ -195,10 +195,12 @@ class Controller:
           if m.distance < 0.75*n.distance:
             good_count += 1
         print(str(good_count) + "/" + str(len(previous_des)))
-        if good_count > 0.9*len(previous_des):
+        if good_count > 0.6*len(previous_des):
           self.state = DRIVE
       self.past_descriptors.append(des)
 
+    cv2.imshow("Output", self.cv_image)
+    cv2.waitKey(5)
 
   def look_both_ways(self, event):
     """ Callback function to set the robot's state to LOOK_BOTH_WAYS """
@@ -228,7 +230,21 @@ class Controller:
     """ Publishes self.command to ROS """
     self.pub.publish(self.command)
 
+  def signal_handler(self, signal, frame):
+    settings_file = open('settings.txt', 'w')
+    settings_file.write(str(self.grey_lb) + '\n')
+    settings_file.write(str(self.grey_ub) + '\n')
+    settings_file.write(str(self.red_lb) + '\n')
+    settings_file.write(str(self.red_ub) + '\n')
+    settings_file.close()
+    print('Exiting gracefully...')
+    sys.exit(0)
+
 controller = Controller()
+signal.signal(signal.SIGINT, controller.signal_handler)
 
 while not rospy.is_shutdown():
   controller.send()
+
+
+

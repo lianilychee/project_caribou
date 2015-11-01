@@ -58,8 +58,7 @@ def find_stop_sign(image, lb, ub):
   hsv_image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
   bw_image = cv2.inRange(hsv_image, lb, ub) 
 
-  #print 'lb: ', lb, '     ub: ', ub
-  print image.tolist()
+  print 'lb: ', lb, '     ub: ', ub
 
   cv2.imshow("bw img", bw_image)
 
