@@ -14,8 +14,11 @@ from geometry_msgs.msg import Twist, Vector3
 import match_keypoints as mk
 import rospkg
 
+<<<<<<< HEAD
 
 
+=======
+>>>>>>> 778f12d8058557b7de32b47dab821c266dacbbb1
 def find_line(image,top_left,bottom_right,lower_bound,upper_bound,threshold):
   """
   Given the bw image, define the cropped image, find the line, and output the 
@@ -57,6 +60,7 @@ def find_boundary_pts():
   needed to draw a two-point rectangle.
   """
 
+<<<<<<< HEAD
   image = cv2.imread('../stop.png')
   gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
   gray = cv2.GaussianBlur(gray, (3, 3), 0)
@@ -83,3 +87,35 @@ def find_boundary_pts():
   cv2.imshow("Output", image)
   cv2.waitKey(0)
   
+=======
+  im = cv2.imread('../test_images/stop.png')
+
+  im_gray = cv2.cvtColor(im, cv2.COLOR_BGR2GRAY)
+
+  ret,thresh = cv2.threshold(im_gray,127,255,0)
+  contours, hierarchy = cv2.findContours(thresh,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE) 
+
+  cv2.drawContours(im, contours, -1, (0,255,0), 3)
+
+  # print contours[6].shape
+
+  x_list = []
+  y_list = []
+
+  for contour in contours:
+    # for pt in np.nditer(contour):
+    for x,y in contour.reshape(contour.shape[0], contour.shape[2]):
+      x_list.append(x)
+      y_list.append(y)
+
+  pt1 = (min(x_list), min(y_list))
+  pt2 = (max(x_list), max(y_list))
+
+  cv2.waitKey(0)
+
+  return pt1, pt2
+
+
+
+find_boundary_pts()
+>>>>>>> 778f12d8058557b7de32b47dab821c266dacbbb1
