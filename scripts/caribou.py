@@ -29,10 +29,16 @@ class Controller:
     self.threshold = 0 # TODO: CHANGE THIS NUMBER
     self.bridge = CvBridge()
 
+    ##### WINDOW SIZE #####
+    self.win_size = (640,480)
+    self.win_height_cropped = 480*0.9
+
     rospy.Subscriber('/camera/image_raw', Image, self.process_image)
 
     cv2.setMouseCallback('video_window', self.process_mouse_event)
     cv2.namedWindow('set_bounds')
+    cv2.namedWindow('bw_window_cropped')
+    cv2.namedWindow('Output')
 
    
     ##### SLIDERS #####
@@ -76,10 +82,6 @@ class Controller:
 
     self.grey_lb = 130
     self.grey_ub = 255
-
-    ##### WINDOW SIZE #####
-    self.win_size = (640,480)
-    self.win_height_cropped = 480*0.9
 
     self.stop()
     self.send()
@@ -144,32 +146,27 @@ class Controller:
     line following and sign detection
     """
     self.cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding="bgr8")
-    self.hsv_image = cv2.cvtColor(self.cv_image, cv2.COLOR_BGR2HSV)
-    self.bw_image = cv2.inRange(self.hsv_image, self.red_lb, self.red_ub) 
+    # self.hsv_image = cv2.cvtColor(self.cv_image, cv2.COLOR_BGR2HSV)
+    # self.bw_image = cv2.inRange(self.hsv_image, self.red_lb, self.red_ub) 
 
     cv2.waitKey(5)
 
     threshold = self.threshold
 
     # to detect line
-    # direction = hp.find_line(self.cv_image, 
-    #   (0, self.win_height_cropped), self.win_size,
-    #   (self.grey_lower,self.grey_lower,self.grey_lower), 
-    #   (self.grey_upper,self.grey_upper,self.grey_upper), 
-    #   threshold) #UNCOMMENT
-    # self.react(direction) #UNCOMMENT
+    direction = hp.find_line(self.cv_image, 
+      (0, self.win_height_cropped), self.win_size,
+      (self.grey_lower,self.grey_lower,self.grey_lower), 
+      (self.grey_upper,self.grey_upper,self.grey_upper), 
+      threshold) #UNCOMMENT
+    self.react(direction) #UNCOMMENT
 
-    hp.find_boundary_pts(self.bw_image)
-
-
-    # draw bounding box
-    # cv2.rectangle(self.cv_image, pt1, pt2, color=(255,0,0), thickness=5)
-    # cv2.rectangle(self.hsv_image, pt1, pt2, color=(255,0,0), thickness=5)
+    hp.find_stop_sign(self.cv_image, self.red_lb, self.red_ub)
 
     # show images
-    # cv2.imshow('video_window', self.cv_image)
+    cv2.imshow('video_window', self.cv_image)
     # cv2.imshow('HSV image', self.hsv_image)    
-    cv2.imshow('BW image', self.bw_image)
+    # cv2.imshow('BW image', self.bw_image)
 
 
   def react(self, direction):
