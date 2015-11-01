@@ -172,7 +172,7 @@ class Controller:
       sign_test = hp.find_stop_sign(self.cv_image, tuple(self.red_lb), tuple(self.red_ub)) #(self.b_l,self.g_l,self.r_l), (self.b_u,self.g_u,self.r_u))
       print sign_test
       if (sign_test and 
-          (rospy.Time.now() + self.ignore_stop_sign_threshold) > 
+          (rospy.Time.now() - self.ignore_stop_sign_threshold) > 
           self.last_stop_sign):
         rospy.Timer(self.pause_duration,
             self.look_both_ways, oneshot=True)
@@ -204,6 +204,7 @@ class Controller:
 
   def look_both_ways(self, event):
     """ Callback function to set the robot's state to LOOK_BOTH_WAYS """
+    self.last_stop_sign = rospy.Time.now()
     self.state = LOOK_BOTH_WAYS
 
   def drive(self, direction):
