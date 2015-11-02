@@ -16,34 +16,33 @@ import helper_functions as hp
 import signal
 import sys
 
+##### GLOBAL SPEED CONSTANT #####
 rotate_speed_limit = 0.3
+
+##### GLOBAl STATE CONSTANTS #####
 DRIVE = 0
 STOP = 1
 LOOK_BOTH_WAYS = 2
 
 class Controller:
   def __init__(self):
-    rospy.init_node('caribou')
 
+    ##### ROS INITIALIZATION #####
+    rospy.init_node('caribou')
     self.pub = rospy.Publisher('cmd_vel', Twist, queue_size=10)
     self.command = Twist()
-
     self.threshold = 0 # TODO: CHANGE THIS NUMBER
     self.bridge = CvBridge()
+    rospy.Subscriber('/camera/image_raw', Image, self.react_to_image)
 
-    ##### WINDOW SIZE #####
+    ##### IMAGE SIZE #####
     self.win_size = (640,480)
     self.win_height_cropped = 480*0.9
 
-    ##### STATE VARIABLES #####
+    ##### SET STATE #####
     self.state = DRIVE
-    self.pause_duration = rospy.Duration(3)
-    self.ignore_stop_sign_threshold = self.pause_duration + rospy.Duration(3)
-    self.last_stop_sign = rospy.Time.now() - self.ignore_stop_sign_threshold
 
-    rospy.Subscriber('/camera/image_raw', Image, self.react_to_image)
-
-    cv2.setMouseCallback('video_window', self.process_mouse_event)
+    ##### INITIALIZE WINDOWS #####
     cv2.namedWindow('set_bounds')
     cv2.namedWindow('bw_window_cropped')
     cv2.namedWindow('Output')
@@ -53,69 +52,40 @@ class Controller:
     self.bf = cv2.BFMatcher()
     self.past_descriptors = []
 
+    ##### SIGN REACTION BEHAVIOR #####
+    self.pause_duration = rospy.Duration(3)
+    self.ignore_stop_sign_threshold = self.pause_duration + rospy.Duration(3)
+    self.last_stop_sign = rospy.Time.now() - self.ignore_stop_sign_threshold
+
     ##### COLOR PARAMETERS (hand-tweaked) #####
-    print('a')
     settings_file = open('settings.txt', 'r')
     self.grey_lb = int(settings_file.readline())
     self.grey_ub = int(settings_file.readline())
     self.red_lb = eval(settings_file.readline())
     self.red_ub = eval(settings_file.readline())
     settings_file.close()
-    print(self.red_lb[0])
    
-    ##### SLIDERS #####
-
+    ##### CALIBRATION SLIDERS #####
     cv2.createTrackbar('grey l', 'set_bounds', self.grey_lb , 255,
         self.set_grey_lower)
-
     cv2.createTrackbar('grey u', 'set_bounds', self.grey_ub , 255,
         self.set_grey_upper)
-
-    self.b_l = 128
     cv2.createTrackbar('B l', 'set_bounds', self.red_lb[0], 255, 
       self.set_b_l)
-
-    self.b_u = 255
     cv2.createTrackbar('B u', 'set_bounds', self.red_ub[0], 255, 
       self.set_b_u)
-
-    self.g_l = 128
     cv2.createTrackbar('G l', 'set_bounds', self.red_lb[1] ,255, 
       self.set_g_l)
-
-    self.g_u = 255
     cv2.createTrackbar('G u', 'set_bounds', self.red_ub[1], 255,
         self.set_g_u)
-
-    self.r_l = 128
     cv2.createTrackbar('R l', 'set_bounds', self.red_lb[2], 255,
         self.set_r_l)
-
-    self.r_u = 255
     cv2.createTrackbar('R u', 'set_bounds', self.red_ub[2], 255,
         self.set_r_u)
 
-    print('c')
+    ##### START OFF STOPPED #####
     self.stop()
     self.send()
-
-
-  def process_mouse_event(self, event, x,y,flags,param):
-    """ Process mouse events so that you can see the color values associated
-        with a particular pixel in the camera images """
-
-    image_info_window = 255*np.ones((500,500,3))
-    cv2.putText(image_info_window,
-        ('Color (b=%d,g=%d,r=%d)' %
-        (self.cv_image[ty,x,0],
-         self.cv_image[y,x,1],
-         self.cv_image[y,x,2])),
-        (5,50),
-        cv2.FONT_HERSHEY_SIMPLEX,
-        1,
-        (0,0,0))
-    cv2.imshow('image_info', image_info_window)
-    cv2.waitKey(5)
 
   def set_grey_lower(self, val):
     """ Use sliders to set GREY lower bound. """
@@ -149,7 +119,6 @@ class Controller:
     """ Use sliders to set RED upper bound. """
     self.red_ub[2] = val
 
-
   def react_to_image(self, msg):
     """
     Process image messages from ROS and stash them in an attribute called
@@ -162,15 +131,14 @@ class Controller:
 
     cv2.waitKey(5)
     if self.state == DRIVE:
-      print 'react'
       direction = hp.find_line(self.cv_image, 
         (0, self.win_height_cropped), self.win_size,
         (self.grey_lb, self.grey_lb, self.grey_lb), 
         (self.grey_ub, self.grey_ub, self.grey_ub), 
         self.threshold)
       self.drive(direction)
-      sign_test = hp.find_stop_sign(self.cv_image, tuple(self.red_lb), tuple(self.red_ub)) #(self.b_l,self.g_l,self.r_l), (self.b_u,self.g_u,self.r_u))
-      print sign_test
+      sign_test = hp.find_stop_sign(self.cv_image,
+          tuple(self.red_lb), tuple(self.red_ub))
       if (sign_test and 
           (rospy.Time.now() - self.ignore_stop_sign_threshold) > 
           self.last_stop_sign):
@@ -179,11 +147,9 @@ class Controller:
         self.state = STOP
 
     elif self.state == STOP:
-      print 'stop'
       self.stop()
 
     elif self.state == LOOK_BOTH_WAYS:
-      print 'look'
       gray = cv2.cvtColor(self.cv_image, cv2.COLOR_BGR2GRAY)
       kp, des = self.sift.detectAndCompute(gray, None)
       if len(self.past_descriptors) > 10:
@@ -194,7 +160,6 @@ class Controller:
         for m,n in matches:
           if m.distance < 0.75*n.distance:
             good_count += 1
-        print(str(good_count) + "/" + str(len(previous_des)))
         if good_count > 0.6*len(previous_des):
           self.state = DRIVE
       self.past_descriptors.append(des)
@@ -220,7 +185,6 @@ class Controller:
         self.command.linear.x = .1 * (1 - abs(proportion))
     else:
       self.stop()
-    # print 'direction: ' , ((self.command.linear.x, self.command.angular.z)) #UNCOMMENT
 
   def stop(self):
     """ Sets self.command to stop all bot motion """
@@ -232,6 +196,7 @@ class Controller:
     self.pub.publish(self.command)
 
   def signal_handler(self, signal, frame):
+    """ Saves calibration settings to settings.txt file before closing """
     settings_file = open('settings.txt', 'w')
     settings_file.write(str(self.grey_lb) + '\n')
     settings_file.write(str(self.grey_ub) + '\n')
@@ -246,6 +211,3 @@ signal.signal(signal.SIGINT, controller.signal_handler)
 
 while not rospy.is_shutdown():
   controller.send()
-
-
-
