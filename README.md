@@ -15,29 +15,23 @@ recognize signs along the roadway, and
 ## System
 
 ### Line following
-The first part of our system allows the neato to follow the “road” which is comprised of white tape on the floor. 
-The image was converted to grayscale.
-A filter was added to select for white objects.
-Only the bottom tenth of the image the camera can see is used.
-The white pixels are averaged to find the the center point of the track.
-The robot drove towards the found point.
+The first part of our system allows the neato to follow the “road” which is comprised of white tape on the floor. The bottom tenth of image from the robot's camera is thresholded to find the tape on the floor in front of the robot. The x values of the white pixels are averaged to find the the center point of the track relative to the robot's "forward" direction. The robot then adjusts its heading to position the observed line directly in front of the robot.
 
 ### Sign recognition<a name=”sign-recognition”></a>
 To recognize the signs, we performed multiple operations:
-Colorspace was converted to hue, saturation, and value.
-A filter that only selects red objects was applied.
-A Gaussian blur was applied to the subsequent image, allowing for more continuous contours to be more readily found.
-Canny edge detection was used to detect of the stop sign including the word stop.
-The edges were merged together using the morphology transform morphologyEx to create closed polygons.
-Contours were found using approxPolyDP.
-The found contours were looped over and if the approximated contour has 8 points,we returned that an octagon was found.
-All octagons that had an area below 10,000 pixels were ignored.
+
+1. Colorspace was converted to hue, saturation, and value.
+2. A filter that only selects red objects was applied.
+3. A Gaussian blur was applied to the subsequent image, allowing for more continuous contours to be more readily found.
+4. Canny edge detection was used to detect of the stop sign including the word stop.
+5. The edges were merged together using the morphology transform morphologyEx to create closed polygons.
+6. Contours were found using approxPolyDP.
+7. The found contours were looped over and if the approximated contour has 8 points,we returned that an octagon was found.
+8. All octagons that had an area below 10,000 pixels were ignored.
 
 ### Collision avoidance <a name=”collision-avoidance”></a>
-Frames from the camera were taken every ⅓ of a second.
-A cache of the last ten images were created.
-Active points were compared.
-If 60% of the active points matched descriptors it was determined nothing was moving in front of the bot and the bot continued forward. If not the bot stopped until the 60% tolerance was reached.
+To avoid colliding with other robots at intersections, our robot calculated the descriptors for the 10 most recent images and compared the most recent set of descriptors with the descriptors calculated 10 frames ago. In short, given that we were recording at 30 frames per second, every new frame would be compared to the frame captured a ⅓ of a second prior.
+If 60% of the new frame's descriptors matched the old frame's descriptors, we assumed nothing was moving in front of the bot and the bot could continue forward. If not, the bot paused until the 60% threshold was reached.
 
 ## Design Decisions
 
