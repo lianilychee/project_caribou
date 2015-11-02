@@ -3,23 +3,32 @@
 import math
 import numpy as np
 import cv2
+import rospy
+from sensor_msgs.msg import Image
+from copy import deepcopy
+from cv_bridge import CvBridge
+from geometry_msgs.msg import Twist, Vector3
 
-def find_line(image, top_left, bottom_right, lower_bound, upper_bound, threshold):
+
+def find_line(image,top_left,bottom_right,lower_bound,upper_bound,threshold):
   """
-  Given the bw image, define the bounding box, find the line, and output the appropriate heading. 
+  Given the bw image, define the cropped image, find the line, and output the 
+  appropriate heading. 
   Coordinates in (row,col) aka (x,y)
   """
-  binary_image = cv2.inRange(image[top_left[1]:bottom_right[1], top_left[0]:bottom_right[0]], lower_bound, upper_bound)
-  cv2.imshow('bw_window', binary_image)
+  binary_image_cropped = cv2.inRange(
+    image[top_left[1]:bottom_right[1], top_left[0]:bottom_right[0]], 
+    lower_bound, upper_bound)
+  cv2.imshow('bw_window_cropped', binary_image_cropped)
 
   centerline = (bottom_right[0] - top_left[0]) / 2
 
   count = 0
   sum_col = 0
 
-  for row in range(binary_image.shape[0]):
-    for col in range(binary_image.shape[1]):
-      if binary_image[row,col]:
+  for row in range(binary_image_cropped.shape[0]):
+    for col in range(binary_image_cropped.shape[1]):
+      if binary_image_cropped[row,col]:
         count += 1
         sum_col += col
   if count < 10:
@@ -34,3 +43,36 @@ def find_line(image, top_left, bottom_right, lower_bound, upper_bound, threshold
   else:
     return (0, True) # line could be nonexistent or centered
 
+
+def find_stop_sign(image, lb, ub):
+  """
+  Find the octagon by:
+  changing raw image colorspace from BGR to HSV,
+  filtering out red from HSV image,
+  changing filtered image to greyscale,
+  performing Gaussian blur and canny edge detection
+  """
+
+  image = image
+
+  hsv_image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+  bw_image = cv2.inRange(hsv_image, lb, ub) 
+
+  cv2.imshow("bw img", bw_image)
+
+  gray_image = cv2.GaussianBlur(bw_image, (3, 3), 0)
+  edged = cv2.Canny(gray_image,10,250)
+  kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (7, 7))
+  closed = cv2.morphologyEx(edged, cv2.MORPH_CLOSE, kernel)
+  
+  (cnts, _) = cv2.findContours(closed.copy(),
+      cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+  total = 0
+  for c in cnts:
+    peri = cv2.arcLength(c,True)
+    approx = cv2.approxPolyDP(c, 0.02 * peri, True)
+    if len(approx) == 8 and cv2.contourArea(c) > 10000:
+      cv2.drawContours(image, [approx], -1, (0, 255, 0), 4)
+      total +=1
+
+  return (total > 0)
