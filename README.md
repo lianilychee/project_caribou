@@ -45,11 +45,11 @@ If 60% of the active points matched descriptors it was determined nothing was mo
 Two critical design decisions revolve around sign recognition.  To effectively detect signs, we set out to combine three methods: color filtering, shape recognition, and text detection.
 
 ### Nixing Text Detection
-Text detection using the [Tesseract library](https://pypi.python.org/pypi/pytesseract) was the first method implemented.  However, it proved to be extremely sensitive.  Tesseract worked best with minimal noise and almost perfect bounding-box placement.  
+Text detection using the [Tesseract library](https://pypi.python.org/pypi/pytesseract) was the first method implemented.  However, it proved to be extremely sensitive.  Tesseract worked best with minimal noise and almost perfect bounding-box placement.
 
 Such perfect bounding-box placement proved more trouble than it was worth, especially as text recognition would prove almost wholly redundant and outright unnecessary if we were to add more street signs, such as one-way signs and turn signs, respectively.
 
-![bounding with corners](readme_images/bounding.jpg)
+![bounding with corners](/readme_images/bounding.jpg)
 
 In the first diagram, the bounding box includes some of the sign’s perimeter, breaking the text-recognition.
 
