@@ -4,7 +4,7 @@ Project Caribou Writeup
 
 ROS package that enables a Neato to recognize a stop sign and avoid other Neatos.
 
-Video Demo: <link>
+**Video Demo:** [NEATO OBEYS STOP SIGNS](https://www.youtube.com/watch?v=WqaiuiBEuHQ)
 
 ## Objective
 In our CompRobo Computer Vision project, we wanted our robot to behave like a very simple self-driving car. We intended that the robot would:
